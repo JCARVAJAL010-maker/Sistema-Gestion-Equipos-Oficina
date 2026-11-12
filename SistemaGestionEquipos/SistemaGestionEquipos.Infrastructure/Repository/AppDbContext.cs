@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SistemaGestionEquipos.API.Models;
+﻿
+using Microsoft.EntityFrameworkCore;
+using SistemaGestionEquipos.Domain.Entities;
 
-namespace SistemaGestionEquipos.API.Data
+namespace SistemaGestionEquipos.Infrastructure.Repository
 {
     public class AppDbContext : DbContext
     {
@@ -14,3 +15,4 @@ namespace SistemaGestionEquipos.API.Data
         public DbSet<Empleado> Empleados { get; set; }
     }
 }
+

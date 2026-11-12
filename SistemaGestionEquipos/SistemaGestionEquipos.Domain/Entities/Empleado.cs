@@ -1,5 +1,5 @@
 ﻿
-namespace SistemaGestionEquipos.API.Models
+namespace SistemaGestionEquipos.Domain.Entities
 {
     public class Empleado
     {

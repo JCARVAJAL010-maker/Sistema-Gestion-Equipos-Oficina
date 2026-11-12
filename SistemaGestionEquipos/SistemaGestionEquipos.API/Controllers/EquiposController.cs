@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SistemaGestionEquipos.API.Data;
+﻿
+using Microsoft.AspNetCore.Mvc;
 using SistemaGestionEquipos.API.DTOs;
-using SistemaGestionEquipos.API.Models;
+using SistemaGestionEquipos.Domain.Entities;
+using SistemaGestionEquipos.Infrastructure.Repository;
 
 namespace SistemaGestionEquipos.API.Controllers
 {
@@ -10,27 +10,27 @@ namespace SistemaGestionEquipos.API.Controllers
     [ApiController]
     public class EquiposController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly EquipoRepository _equipoRepository;
+        private readonly EmpleadoRepository _empleadoRepository;
 
-        public EquiposController(AppDbContext context)
+        public EquiposController(
+            EquipoRepository equipoRepository,
+            EmpleadoRepository empleadoRepository)
         {
-            _context = context;
+            _equipoRepository = equipoRepository;
+            _empleadoRepository = empleadoRepository;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Equipo>>> Get()
         {
-            return await _context.Equipos
-                .Include(e => e.Empleado)
-                .ToListAsync();
+            return await _equipoRepository.ObtenerConEmpleadosAsync();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Equipo>> Get(int id)
         {
-            var equipo = await _context.Equipos
-                .Include(e => e.Empleado)
-                .FirstOrDefaultAsync(e => e.Id == id);
+            var equipo = await _equipoRepository.ObtenerConEmpleadoPorIdAsync(id);
 
             if (equipo == null)
                 return NotFound();
@@ -41,9 +41,14 @@ namespace SistemaGestionEquipos.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Post(EquipoDto dto)
         {
-            if (dto.EmpleadoId.HasValue &&
-                !await _context.Empleados.AnyAsync(e => e.Id == dto.EmpleadoId))
-                return BadRequest("El empleado no existe.");
+            if (dto.EmpleadoId.HasValue)
+            {
+                var empleado = await _empleadoRepository
+                    .ObtenerPorIdAsync(dto.EmpleadoId.Value);
+
+                if (empleado == null)
+                    return BadRequest("El empleado no existe.");
+            }
 
             var equipo = new Equipo
             {
@@ -54,8 +59,7 @@ namespace SistemaGestionEquipos.API.Controllers
                 EmpleadoId = dto.EmpleadoId
             };
 
-            _context.Equipos.Add(equipo);
-            await _context.SaveChangesAsync();
+            await _equipoRepository.AgregarAsync(equipo);
 
             return CreatedAtAction(nameof(Get),
                 new { id = equipo.Id }, equipo);
@@ -64,14 +68,19 @@ namespace SistemaGestionEquipos.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(int id, EquipoDto dto)
         {
-            var equipo = await _context.Equipos.FindAsync(id);
+            var equipo = await _equipoRepository.ObtenerPorIdAsync(id);
 
             if (equipo == null)
                 return NotFound();
 
-            if (dto.EmpleadoId.HasValue &&
-                !await _context.Empleados.AnyAsync(e => e.Id == dto.EmpleadoId))
-                return BadRequest("El empleado no existe.");
+            if (dto.EmpleadoId.HasValue)
+            {
+                var empleado = await _empleadoRepository
+                    .ObtenerPorIdAsync(dto.EmpleadoId.Value);
+
+                if (empleado == null)
+                    return BadRequest("El empleado no existe.");
+            }
 
             equipo.Nombre = dto.Nombre;
             equipo.Marca = dto.Marca;
@@ -79,7 +88,7 @@ namespace SistemaGestionEquipos.API.Controllers
             equipo.Estado = dto.Estado;
             equipo.EmpleadoId = dto.EmpleadoId;
 
-            await _context.SaveChangesAsync();
+            await _equipoRepository.ActualizarAsync(equipo);
 
             return NoContent();
         }
@@ -87,13 +96,12 @@ namespace SistemaGestionEquipos.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var equipo = await _context.Equipos.FindAsync(id);
+            var equipo = await _equipoRepository.ObtenerPorIdAsync(id);
 
             if (equipo == null)
                 return NotFound();
 
-            _context.Equipos.Remove(equipo);
-            await _context.SaveChangesAsync();
+            await _equipoRepository.EliminarAsync(equipo);
 
             return NoContent();
         }

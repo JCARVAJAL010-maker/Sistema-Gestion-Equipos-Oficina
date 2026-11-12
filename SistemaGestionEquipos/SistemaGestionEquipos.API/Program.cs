@@ -1,5 +1,6 @@
+
 using Microsoft.EntityFrameworkCore;
-using SistemaGestionEquipos.API.Data;
+using SistemaGestionEquipos.Infrastructure.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,13 +9,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Registrar repositorios de Infrastructure
+builder.Services.AddScoped<EquipoRepository>();
+builder.Services.AddScoped<EmpleadoRepository>();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Crear base de datos y tablas si no existen
+// Crear base de datos y tablas 
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();

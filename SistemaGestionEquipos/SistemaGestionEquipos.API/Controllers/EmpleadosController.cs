@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SistemaGestionEquipos.API.Data;
+﻿
+using Microsoft.AspNetCore.Mvc;
 using SistemaGestionEquipos.API.DTOs;
-using SistemaGestionEquipos.API.Models;
+using SistemaGestionEquipos.Domain.Entities;
+using SistemaGestionEquipos.Infrastructure.Repository;
 
 namespace SistemaGestionEquipos.API.Controllers
 {
@@ -10,23 +10,23 @@ namespace SistemaGestionEquipos.API.Controllers
     [ApiController]
     public class EmpleadosController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly EmpleadoRepository _empleadoRepository;
 
-        public EmpleadosController(AppDbContext context)
+        public EmpleadosController(EmpleadoRepository empleadoRepository)
         {
-            _context = context;
+            _empleadoRepository = empleadoRepository;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Empleado>>> Get()
         {
-            return await _context.Empleados.ToListAsync();
+            return await _empleadoRepository.ObtenerTodosAsync();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Empleado>> Get(int id)
         {
-            var empleado = await _context.Empleados.FindAsync(id);
+            var empleado = await _empleadoRepository.ObtenerPorIdAsync(id);
 
             if (empleado == null)
                 return NotFound();
@@ -45,16 +45,16 @@ namespace SistemaGestionEquipos.API.Controllers
                 Correo = dto.Correo
             };
 
-            _context.Empleados.Add(empleado);
-            await _context.SaveChangesAsync();
+            await _empleadoRepository.AgregarAsync(empleado);
 
-            return CreatedAtAction(nameof(Get), new { id = empleado.Id }, empleado);
+            return CreatedAtAction(nameof(Get),
+                new { id = empleado.Id }, empleado);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(int id, EmpleadoDto dto)
         {
-            var empleado = await _context.Empleados.FindAsync(id);
+            var empleado = await _empleadoRepository.ObtenerPorIdAsync(id);
 
             if (empleado == null)
                 return NotFound();
@@ -64,7 +64,7 @@ namespace SistemaGestionEquipos.API.Controllers
             empleado.Departamento = dto.Departamento;
             empleado.Correo = dto.Correo;
 
-            await _context.SaveChangesAsync();
+            await _empleadoRepository.ActualizarAsync(empleado);
 
             return NoContent();
         }
@@ -72,13 +72,12 @@ namespace SistemaGestionEquipos.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var empleado = await _context.Empleados.FindAsync(id);
+            var empleado = await _empleadoRepository.ObtenerPorIdAsync(id);
 
             if (empleado == null)
                 return NotFound();
 
-            _context.Empleados.Remove(empleado);
-            await _context.SaveChangesAsync();
+            await _empleadoRepository.EliminarAsync(empleado);
 
             return NoContent();
         }

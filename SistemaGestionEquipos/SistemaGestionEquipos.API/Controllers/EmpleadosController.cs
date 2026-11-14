@@ -1,8 +1,9 @@
 ﻿
+
 using Microsoft.AspNetCore.Mvc;
-using SistemaGestionEquipos.API.DTOs;
+using SistemaGestionEquipos.Application.Contract;
 using SistemaGestionEquipos.Domain.Entities;
-using SistemaGestionEquipos.Infrastructure.Repository;
+using SistemaGestionEquipos.Application.Dtos;
 
 namespace SistemaGestionEquipos.API.Controllers
 {
@@ -10,23 +11,23 @@ namespace SistemaGestionEquipos.API.Controllers
     [ApiController]
     public class EmpleadosController : ControllerBase
     {
-        private readonly EmpleadoRepository _empleadoRepository;
+        private readonly IEmpleadoService _empleadoService;
 
-        public EmpleadosController(EmpleadoRepository empleadoRepository)
+        public EmpleadosController(IEmpleadoService empleadoService)
         {
-            _empleadoRepository = empleadoRepository;
+            _empleadoService = empleadoService;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Empleado>>> Get()
         {
-            return await _empleadoRepository.ObtenerTodosAsync();
+            return await _empleadoService.ObtenerTodosAsync();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Empleado>> Get(int id)
         {
-            var empleado = await _empleadoRepository.ObtenerPorIdAsync(id);
+            var empleado = await _empleadoService.ObtenerPorIdAsync(id);
 
             if (empleado == null)
                 return NotFound();
@@ -45,39 +46,53 @@ namespace SistemaGestionEquipos.API.Controllers
                 Correo = dto.Correo
             };
 
-            await _empleadoRepository.AgregarAsync(empleado);
+            try
+            {
+                await _empleadoService.AgregarAsync(empleado);
 
-            return CreatedAtAction(nameof(Get),
-                new { id = empleado.Id }, empleado);
+                return CreatedAtAction(nameof(Get),
+                    new { id = empleado.Id }, empleado);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(int id, EmpleadoDto dto)
         {
-            var empleado = await _empleadoRepository.ObtenerPorIdAsync(id);
+            var empleado = new Empleado
+            {
+                Nombre = dto.Nombre,
+                Apellido = dto.Apellido,
+                Departamento = dto.Departamento,
+                Correo = dto.Correo
+            };
 
-            if (empleado == null)
-                return NotFound();
+            try
+            {
+                var actualizado =
+                    await _empleadoService.ActualizarAsync(id, empleado);
 
-            empleado.Nombre = dto.Nombre;
-            empleado.Apellido = dto.Apellido;
-            empleado.Departamento = dto.Departamento;
-            empleado.Correo = dto.Correo;
+                if (!actualizado)
+                    return NotFound();
 
-            await _empleadoRepository.ActualizarAsync(empleado);
-
-            return NoContent();
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var empleado = await _empleadoRepository.ObtenerPorIdAsync(id);
+            var eliminado = await _empleadoService.EliminarAsync(id);
 
-            if (empleado == null)
+            if (!eliminado)
                 return NotFound();
-
-            await _empleadoRepository.EliminarAsync(empleado);
 
             return NoContent();
         }
